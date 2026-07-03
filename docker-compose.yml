@@ -1,0 +1,54 @@
+services:
+
+  backend:
+    container_name: petmind-backend
+    restart: always
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app          # bind-mount for live reload
+      - petmind_db:/app/data    # persistent SQLite storage
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DATABASE_URL=sqlite+aiosqlite:///./data/petmind.db
+      - COGNEE_API_URL=http://cognee:8000
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - petmind-network
+      - cognee-network           # joins cognee's network to reach Cognee service
+
+  frontend:
+    container_name: petmind-frontend
+    restart: always
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app          # bind-mount for live reload
+      - /app/node_modules        # keep container's node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - petmind-network
+
+networks:
+  petmind-network:
+    name: petmind-network
+  cognee-network:
+    external: true               # created by cognee-docker project
+    name: cognee-network
+
+volumes:
+  petmind_db:

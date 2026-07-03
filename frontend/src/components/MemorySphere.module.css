@@ -1,0 +1,243 @@
+/* ── Scene container ─────────────────────────────────── */
+.scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 900px;
+  overflow: hidden;
+}
+
+.ambientGlow {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,106,247,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Center orb ──────────────────────────────────────── */
+.centerOrb {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.centerInner {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #2d2060, #12102a);
+  border: 1.5px solid rgba(167,139,250,0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-shadow: 0 0 32px rgba(124,106,247,0.5), inset 0 0 20px rgba(124,106,247,0.15);
+  z-index: 2;
+  position: relative;
+}
+
+.centerIcon { font-size: 28px; line-height: 1; }
+.centerLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e0d8ff;
+  letter-spacing: 0.05em;
+}
+
+/* Pulsing rings around center */
+@keyframes centerPulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.centerPulse, .centerPulse2 {
+  position: absolute;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 1px solid rgba(124,106,247,0.4);
+  animation: centerPulse 2.4s ease-out infinite;
+}
+.centerPulse2 { animation-delay: 1.2s; }
+
+/* ── Orbital rings ───────────────────────────────────── */
+@keyframes spin0 { from { transform: rotateX(75deg) rotateZ(0deg); } to { transform: rotateX(75deg) rotateZ(360deg); } }
+@keyframes spin1 { from { transform: rotateX(65deg) rotateZ(120deg); } to { transform: rotateX(65deg) rotateZ(480deg); } }
+@keyframes spin2 { from { transform: rotateX(55deg) rotateZ(240deg); } to { transform: rotateX(55deg) rotateZ(600deg); } }
+
+.orbit {
+  position: absolute;
+  border-radius: 50%;
+  transform-style: preserve-3d;
+}
+
+.orbit0 {
+  width: 320px; height: 320px;
+  animation: spin0 14s linear infinite;
+}
+.orbit1 {
+  width: 420px; height: 420px;
+  animation: spin1 20s linear infinite;
+}
+.orbit2 {
+  width: 510px; height: 510px;
+  animation: spin2 26s linear infinite;
+}
+
+/* Speed up on thinking */
+.thinking .orbit0 { animation-duration: 5s; }
+.thinking .orbit1 { animation-duration: 7s; }
+.thinking .orbit2 { animation-duration: 9s; }
+
+/* The dashed ring track */
+.orbitTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px dashed rgba(255,255,255,0.1);
+}
+
+/* ── Nodes on orbits ─────────────────────────────────── */
+.nodeWrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: 0 0;
+  transform: rotate(var(--angle)) translateX(50%) translateX(-50%) translateY(-160px);
+  /* For orbit0: r=160, orbit1: 210, orbit2: 255 — handled per orbit */
+}
+
+.orbit0 .nodeWrapper { transform: rotate(var(--angle)) translateY(-160px) translateX(-50%); }
+.orbit1 .nodeWrapper { transform: rotate(var(--angle)) translateY(-210px) translateX(-50%); }
+.orbit2 .nodeWrapper { transform: rotate(var(--angle)) translateY(-255px) translateX(-50%); }
+
+/* Counter-rotate so cards always face forward despite orbit spin */
+@keyframes counterSpin0 { from { transform: translateX(-50%) rotate(0deg); } to { transform: translateX(-50%) rotate(-360deg); } }
+@keyframes counterSpin1 { from { transform: translateX(-50%) rotate(-120deg); } to { transform: translateX(-50%) rotate(-480deg); } }
+@keyframes counterSpin2 { from { transform: translateX(-50%) rotate(-240deg); } to { transform: translateX(-50%) rotate(-600deg); } }
+
+.orbit0 .nodeCard { animation: counterSpin0 14s linear infinite; }
+.orbit1 .nodeCard { animation: counterSpin1 20s linear infinite; }
+.orbit2 .nodeCard { animation: counterSpin2 26s linear infinite; }
+
+.thinking .orbit0 .nodeCard { animation-duration: 5s; }
+.thinking .orbit1 .nodeCard { animation-duration: 7s; }
+.thinking .orbit2 .nodeCard { animation-duration: 9s; }
+
+.nodeCard {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.12), rgba(255,255,255,0.03));
+  border: 1.5px solid rgba(255,255,255,0.15);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+
+.nodeCard:hover {
+  border-color: rgba(255,255,255,0.35);
+  box-shadow: 0 0 20px rgba(255,255,255,0.1);
+}
+
+.nodeActive .nodeCard {
+  border-color: var(--color) !important;
+  box-shadow: 0 0 30px var(--color), 0 0 60px color-mix(in srgb, var(--color) 40%, transparent) !important;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--color) 25%, transparent), rgba(0,0,0,0.4));
+}
+
+/* Expanding active ring */
+@keyframes activeRingPulse {
+  0% { transform: translateX(-50%) scale(1); opacity: 0.7; }
+  100% { transform: translateX(-50%) scale(1.6); opacity: 0; }
+}
+.activeRing {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color);
+  animation: activeRingPulse 1s ease-out infinite;
+}
+
+.nodeIcon { font-size: 22px; line-height: 1; }
+.nodeLabel {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.8);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 72px;
+  letter-spacing: 0.03em;
+}
+.nodeCount {
+  font-size: 8px;
+  color: var(--color);
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+/* ── Connector line (node → center) ─────────────────── */
+.connector {
+  position: absolute;
+  top: 45px;
+  left: 50%;
+  width: 1px;
+  transform-origin: top center;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0));
+  pointer-events: none;
+}
+.orbit0 .connector { height: 115px; }
+.orbit1 .connector { height: 165px; }
+.orbit2 .connector { height: 210px; }
+
+/* ── Travelling particle on connector ───────────────── */
+@keyframes travel {
+  0% { top: 45px; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { top: calc(45px + var(--len, 115px)); opacity: 0; }
+}
+
+.particle {
+  position: absolute;
+  left: calc(50% - 3px);
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--color, #7c6af7);
+  box-shadow: 0 0 8px var(--color, #7c6af7);
+  animation: travel 3s ease-in-out infinite;
+  pointer-events: none;
+}
+.orbit0 .particle { --len: 115px; animation-duration: 2.8s; }
+.orbit1 .particle { --len: 165px; animation-duration: 3.4s; }
+.orbit2 .particle { --len: 210px; animation-duration: 4s; }
+
+.particleFast { animation-duration: 0.9s !important; }
+
+/* ── Ambient floating dots ───────────────────────────── */
+@keyframes floatDot {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+  50% { transform: translateY(-12px) scale(1.3); opacity: 1; }
+}
+.dot {
+  position: absolute;
+  border-radius: 50%;
+  animation: floatDot var(--dur, 6s) ease-in-out infinite;
+  opacity: 0.6;
+  pointer-events: none;
+  box-shadow: 0 0 10px currentColor;
+}

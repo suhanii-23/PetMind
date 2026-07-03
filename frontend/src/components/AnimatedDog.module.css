@@ -1,0 +1,72 @@
+.dog {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* ── gentle idle breathing ─────────────────────────── */
+@keyframes breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.008); }
+}
+.body {
+  transform-origin: 210px 400px;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+/* ── head: subtle "thinking" bob, tilts up when active ── */
+@keyframes headThink {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(-1.5deg) translateY(-2px); }
+}
+.head {
+  transform-origin: 220px 200px;
+  animation: headThink 4.5s ease-in-out infinite;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.active .head {
+  transform: rotate(-6deg) translateY(-6px);
+}
+
+/* ── tail wag ──────────────────────────────────────── */
+@keyframes wag {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-10deg); }
+}
+.tail {
+  transform-origin: 120px 360px;
+  animation: wag 2.4s ease-in-out infinite;
+}
+.active .tail {
+  animation: wag 0.7s ease-in-out infinite;
+}
+
+/* ── brain pulse ───────────────────────────────────── */
+@keyframes brainPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+.brain { animation: brainPulse 3s ease-in-out infinite; }
+.active .brain { animation: brainPulse 1s ease-in-out infinite; }
+
+/* ── neurons twinkle ───────────────────────────────── */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+.neuron {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: twinkle 2.2s ease-in-out infinite;
+}
+.active .neuron { animation-duration: 1s; }
+
+/* ── synapse flicker ───────────────────────────────── */
+@keyframes flicker {
+  0%, 100% { stroke-opacity: 0.25; }
+  50% { stroke-opacity: 0.85; }
+}
+.synapse {
+  animation: flicker 2.6s ease-in-out infinite;
+}
+.active .synapse { animation-duration: 1.1s; }
