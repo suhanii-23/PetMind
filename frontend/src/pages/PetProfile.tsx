@@ -26,7 +26,7 @@ const NODES: NodeDef[] = [
   { id: "documents",    label: "Documents",         icon: "📄", color: "#c084fc" },
 ];
 
-interface ChatMsg { role: "user" | "bot"; text: string; }
+interface ChatMsg { role: "user" | "bot"; text: string; cognee?: boolean; }
 
 const SUGGESTIONS = (name: string) => [
   `What are ${name}'s allergies?`,
@@ -101,7 +101,7 @@ export default function PetProfile() {
       });
       const data = await res.json();
       const reply = data.message || data.detail || "Sorry, I couldn't process that. Try again.";
-      setMessages(m => [...m, { role: "bot", text: reply }]);
+      setMessages(m => [...m, { role: "bot", text: reply, cognee: !!data.cognee_used }]);
       if (data.category && data.category !== "general") {
         setActiveNode(data.category);
         setTimeout(() => setActiveNode(null), 3000);
@@ -174,6 +174,12 @@ export default function PetProfile() {
           ))}
         </nav>
 
+        <div style={{ margin: "0 10px 12px", padding: "8px 10px", borderRadius: 8, background: "rgba(124,106,247,0.08)", border: "1px solid rgba(124,106,247,0.15)", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399", boxShadow: "0 0 6px #34d399", flexShrink: 0 }} />
+          <span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 600 }}>Cognee</span>
+          <span style={{ fontSize: 10, color: "#8b949e" }}>memory active</span>
+        </div>
+
         <div className={styles.sidebarUser}>
           <div className={styles.userAvatar}>S</div>
           <span className={styles.userName}>suhani</span>
@@ -236,6 +242,17 @@ export default function PetProfile() {
                 <span className={styles.liveDot} />
                 Live
               </div>
+              <div style={{
+                position: "absolute", top: 14, left: 14,
+                display: "flex", alignItems: "center", gap: 6,
+                background: "rgba(124,106,247,0.15)",
+                border: "1px solid rgba(124,106,247,0.35)",
+                borderRadius: 99, padding: "5px 12px",
+                backdropFilter: "blur(8px)",
+              }}>
+                <span style={{ fontSize: 13 }}>🧠</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.04em" }}>Powered by Cognee</span>
+              </div>
             </div>
 
             <div className={styles.chatSection}>
@@ -254,6 +271,11 @@ export default function PetProfile() {
                     )}
                     <div className={styles.msgBubble}>
                       {m.text.split("\n").map((line, li) => <p key={li}>{line}</p>)}
+                      {m.role === "bot" && m.cognee && (
+                        <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 4, opacity: 0.7 }}>
+                          <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 600, letterSpacing: "0.04em" }}>⚡ Retrieved from Cognee memory graph</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -297,19 +319,86 @@ export default function PetProfile() {
           </>
         )}
 
-        {/* ── Health Map view: fullscreen MemorySphere ─────────── */}
+        {/* ── Health Map view: Cognee knowledge graph ──────────── */}
         {view === "health-map" && (
-          <div className={styles.heroWrapper} style={{ height: "calc(100vh - 220px)", margin: "0 20px 24px" }}>
-            <MemorySphere
-              nodes={NODES}
-              petName={pet.name}
-              activeNode={activeNode}
-              thinking={false}
-              memCount={memCount}
-            />
-            <div className={styles.liveBadge}>
-              <span className={styles.liveDot} />
-              Live
+          <div style={{ padding: "0 24px 24px" }}>
+            {/* Cognee branding header */}
+            <div style={{
+              background: "linear-gradient(135deg, rgba(124,106,247,0.12), rgba(167,139,250,0.06))",
+              border: "1px solid rgba(124,106,247,0.25)",
+              borderRadius: 14, padding: "18px 22px", marginBottom: 20,
+              display: "flex", alignItems: "center", gap: 14,
+            }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: "linear-gradient(135deg, #7c6af7, #a78bfa)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 22, flexShrink: 0,
+              }}>🧠</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#e6edf3", display: "flex", alignItems: "center", gap: 8 }}>
+                  Cognee Knowledge Graph
+                  <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.3)", color: "#34d399" }}>LIVE</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#8b949e", marginTop: 2 }}>
+                  {pet.name}'s health records are indexed as a semantic knowledge graph — powering memory recall and AI chat
+                </div>
+              </div>
+            </div>
+
+            {/* Node counts grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
+              {NODES.map(n => {
+                const count = memCount(n.id);
+                return (
+                  <div key={n.id} style={{
+                    background: "#161b22", border: "1px solid #30363d",
+                    borderRadius: 10, padding: "14px 16px",
+                    display: "flex", flexDirection: "column", gap: 6,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 18 }}>{n.icon}</span>
+                      <span style={{ fontSize: 11, color: "#8b949e", fontWeight: 500 }}>{n.label}</span>
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 700, color: n.color, lineHeight: 1 }}>{count}</div>
+                    <div style={{ fontSize: 10, color: "#6e7681" }}>graph nodes</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* How Cognee is used */}
+            <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: "18px 20px", marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#e6edf3", marginBottom: 14 }}>How Cognee powers PetMind</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { icon: "📥", step: "Ingest", desc: `${pet.name}'s full health record is uploaded as a rich text document to Cognee` },
+                  { icon: "🕸", step: "Cognify", desc: "Cognee builds a semantic knowledge graph — extracting entities, relationships, and facts" },
+                  { icon: "🔍", step: "Recall", desc: "Every chat query triggers a RAG search over the graph, retrieving the most relevant memory nodes" },
+                  { icon: "💬", step: "Augment", desc: "Retrieved context is injected into Claude's prompt — making answers accurate and grounded" },
+                ].map(({ icon, step, desc }) => (
+                  <div key={step} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, background: "rgba(124,106,247,0.1)",
+                      border: "1px solid rgba(124,106,247,0.2)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 16, flexShrink: 0,
+                    }}>{icon}</div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#a78bfa" }}>{step}</div>
+                      <div style={{ fontSize: 12, color: "#8b949e", marginTop: 1 }}>{desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mini MemorySphere */}
+            <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", height: 320, background: "linear-gradient(135deg, #12102a 0%, #0f0d1f 40%, #0a0814 100%)", border: "1px solid rgba(124,106,247,0.15)" }}>
+              <MemorySphere nodes={NODES} petName={pet.name} activeNode={null} thinking={false} memCount={memCount} />
+              <div style={{ position: "absolute", bottom: 12, left: 12, fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>
+                Node sizes reflect Cognee graph entity counts
+              </div>
             </div>
           </div>
         )}

@@ -127,4 +127,4 @@ async def chat_with_pet(
     reply = response.content[0].text.strip()
     category = detect_category(body.message)
 
-    return {"message": reply, "category": category}
+    return {"message": reply, "category": category, "cognee_used": bool(cognee_context)}
