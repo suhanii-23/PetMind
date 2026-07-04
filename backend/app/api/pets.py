@@ -1,18 +1,20 @@
+import asyncio
 import json
 import uuid
 import os
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.api.auth import get_current_user
 from app.models.user import User
 from app.models.pet import Pet, PetDocument
 from app.schemas.pet import OnboardingPayload, PetOut, DocumentOut
+from app.services import cognee_memory
 
 router = APIRouter(prefix="/pets", tags=["pets"])
 
@@ -106,7 +108,23 @@ async def onboard_pet(
 
     await db.commit()
     await db.refresh(pet)
-    return pet_to_out(pet, saved_docs)
+
+    # Store pet memory in Cognee graph (background — never blocks the response)
+    pet_out = pet_to_out(pet, saved_docs)
+    if settings.COGNEE_API_URL:
+        pet_dict = {
+            **pet_out,
+            "allergies": json.loads(pet.allergies or "[]"),
+            "medications": json.loads(pet.medications or "[]"),
+            "surgeries": json.loads(pet.surgeries or "[]"),
+            "conditions": json.loads(pet.conditions or "[]"),
+            "free_memory": pet.free_memory or "",
+        }
+        asyncio.create_task(
+            cognee_memory.store_pet_to_cognee(pet_dict, settings.COGNEE_API_URL)
+        )
+
+    return pet_out
 
 
 @router.get("/", response_model=List[dict])
@@ -131,3 +149,22 @@ async def get_pet(
         raise HTTPException(status_code=404, detail="Pet not found")
     docs_result = await db.execute(select(PetDocument).where(PetDocument.pet_id == pet_id))
     return pet_to_out(pet, docs_result.scalars().all())
+
+
+@router.get("/{pet_id}/graph")
+async def get_pet_graph(
+    pet_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return Cognee graph node counts for the MemorySphere visualization."""
+    result = await db.execute(select(Pet).where(Pet.id == pet_id, Pet.owner_id == current_user.id))
+    pet = result.scalar_one_or_none()
+    if not pet:
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    if not settings.COGNEE_API_URL:
+        return {"counts": {}, "source": "none"}
+
+    counts = await cognee_memory.get_graph_summary(pet_id, settings.COGNEE_API_URL)
+    return {"counts": counts, "source": "cognee"}

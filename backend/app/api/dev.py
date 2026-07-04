@@ -2,15 +2,18 @@
 Seed endpoint — demo/hackathon use only.
 Creates 3 richly detailed pets for the currently logged-in user.
 """
+import asyncio
 import json
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.api.auth import get_current_user
 from app.models.user import User
-from app.models.pet import Pet
+from app.models.pet import Pet, PetDocument, PetAppointment
+from app.services import cognee_memory
 
 router = APIRouter(prefix="/dev", tags=["dev"])
 
@@ -254,6 +257,46 @@ SEED_PETS = [
 ]
 
 
+SEED_DOCS = {
+    "Bella": [
+        ("Vaccination Certificate 2024.pdf", "vaccination"),
+        ("TPLO Surgery Report Feb 2024.pdf", "surgery"),
+        ("Post-Surgery X-Ray Mar 2024.pdf", "medical"),
+        ("Blood Work Panel Jan 2024.pdf", "medical"),
+        ("Pet Insurance Policy Trupanion.pdf", "medical"),
+    ],
+    "Oliver": [
+        ("Echocardiogram Report Mar 2024.pdf", "medical"),
+        ("HCM Diagnosis Report Sep 2022.pdf", "medical"),
+        ("Kidney Function Test Jan 2024.pdf", "medical"),
+        ("Vaccination Record Aug 2023.pdf", "vaccination"),
+        ("Dental Cleaning Report Mar 2022.pdf", "surgery"),
+    ],
+    "Mango": [
+        ("Annual Wellness Check Feb 2024.pdf", "medical"),
+        ("Psittacosis Test Result 2024.pdf", "medical"),
+        ("Feather Plucking Assessment Jan 2024.pdf", "medical"),
+    ],
+}
+
+SEED_APPOINTMENTS = {
+    "Bella": [
+        {"vet_name": "Dr. Priya Sharma", "clinic_name": "PawsCare Clinic", "date": "2024-01-15", "reason": "Annual wellness check"},
+        {"vet_name": "Dr. Arun Mehta", "clinic_name": "Mumbai Veterinary Hospital", "date": "2024-02-14", "reason": "TPLO surgery"},
+        {"vet_name": "Dr. Priya Sharma", "clinic_name": "PawsCare Clinic", "date": "2024-03-28", "reason": "Post-surgery follow-up"},
+        {"vet_name": "Dr. Priya Sharma", "clinic_name": "PawsCare Clinic", "date": "2024-06-10", "reason": "Full recovery check"},
+    ],
+    "Oliver": [
+        {"vet_name": "Dr. Vikram Rao", "clinic_name": "Bengaluru Animal Hospital", "date": "2024-03-15", "reason": "Cardiac echo — HCM monitoring"},
+        {"vet_name": "Dr. Neha Kapoor", "clinic_name": "WhiskersCare Clinic", "date": "2024-01-20", "reason": "CKD Stage 1 recheck"},
+    ],
+    "Mango": [
+        {"vet_name": "Dr. Sunita Patel", "clinic_name": "Mumbai Avian & Exotic Clinic", "date": "2024-02-10", "reason": "Annual avian wellness check"},
+        {"vet_name": "Dr. Sunita Patel", "clinic_name": "Mumbai Avian & Exotic Clinic", "date": "2024-01-18", "reason": "Feather plucking follow-up"},
+    ],
+}
+
+
 @router.post("/seed")
 async def seed_data(
     db: AsyncSession = Depends(get_db),
@@ -263,10 +306,56 @@ async def seed_data(
     await db.execute(delete(Pet).where(Pet.owner_id == current_user.id))
     await db.flush()
 
+    created_pets = []
     for p in SEED_PETS:
-        db.add(Pet(owner_id=current_user.id, **p))
+        pet = Pet(owner_id=current_user.id, **p)
+        db.add(pet)
+        created_pets.append(pet)
+
+    await db.flush()  # get IDs assigned
+
+    # Add seed documents and appointments for each pet
+    for pet, seed in zip(created_pets, SEED_PETS):
+        for (original_name, doc_type) in SEED_DOCS.get(seed["name"], []):
+            doc = PetDocument(
+                pet_id=pet.id,
+                filename=f"/uploads/documents/seed_{original_name.replace(' ', '_')}",
+                original_name=original_name,
+                doc_type=doc_type,
+            )
+            db.add(doc)
+        for appt_data in SEED_APPOINTMENTS.get(seed["name"], []):
+            appt = PetAppointment(pet_id=pet.id, **appt_data)
+            db.add(appt)
+
+    await db.flush()
+
+    # Index each seed pet in Cognee in the background
+    async def _index_all(pets_snapshot):
+        for pet, seed in pets_snapshot:
+            pet_dict = {
+                "id": pet.id,
+                "name": pet.name,
+                "species": pet.species,
+                "breed": pet.breed,
+                "dob": pet.dob,
+                "gender": pet.gender,
+                "neutered": pet.neutered,
+                "weight_value": pet.weight_value,
+                "weight_unit": pet.weight_unit,
+                "vaccinated": pet.vaccinated,
+                "allergies": json.loads(seed["allergies"]),
+                "medications": json.loads(seed["medications"]),
+                "surgeries": json.loads(seed["surgeries"]),
+                "conditions": json.loads(seed["conditions"]),
+                "free_memory": seed.get("free_memory", ""),
+            }
+            await cognee_memory.store_pet_to_cognee(pet_dict, settings.COGNEE_API_URL)
 
     await db.commit()
+
+    if settings.COGNEE_API_URL:
+        asyncio.create_task(_index_all(list(zip(created_pets, SEED_PETS))))
 
     return {
         "message": "Seeded 3 pets successfully",

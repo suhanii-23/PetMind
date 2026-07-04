@@ -12,8 +12,8 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - DATABASE_URL=sqlite+aiosqlite:///./data/petmind.db
-      - COGNEE_API_URL=http://cognee:8000
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - COGNEE_API_URL=http://cognee:8000
     ports:
       - "8080:8080"
     healthcheck:
@@ -24,7 +24,7 @@ services:
       start_period: 30s
     networks:
       - petmind-network
-      - cognee-network           # joins cognee's network to reach Cognee service
+      - cognee-network           # reaches the cognee service
 
   frontend:
     container_name: petmind-frontend

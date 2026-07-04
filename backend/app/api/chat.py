@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.api.auth import get_current_user
 from app.models.user import User
 from app.models.pet import Pet
+from app.services import cognee_memory
 
 router = APIRouter()
 
@@ -108,11 +109,19 @@ async def chat_with_pet(
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     system = build_system_prompt(pet, allergies, medications, conditions, surgeries)
 
+    # Augment with Cognee memory recall — semantic search over the pet's knowledge graph
+    cognee_context = await cognee_memory.recall_for_chat(
+        pet.id, body.message, settings.COGNEE_API_URL
+    ) if settings.COGNEE_API_URL else ""
+    user_message = body.message
+    if cognee_context:
+        user_message = f"{body.message}\n\n{cognee_context}"
+
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=400,
         system=system,
-        messages=[{"role": "user", "content": body.message}],
+        messages=[{"role": "user", "content": user_message}],
     )
 
     reply = response.content[0].text.strip()

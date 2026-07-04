@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.database import init_db
-from app.api import auth, pets, dev, chat
+from app.api import auth, pets, dev, chat, intelligence, appointments
 
 
 @asynccontextmanager
@@ -36,6 +36,8 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(pets.router, prefix="/api/v1")
 app.include_router(dev.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1/pets", tags=["chat"])
+app.include_router(intelligence.router, prefix="/api/v1/pets", tags=["intelligence"])
+app.include_router(appointments.router, prefix="/api/v1/pets", tags=["appointments"])
 
 
 @app.get("/health")

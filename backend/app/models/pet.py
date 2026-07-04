@@ -56,3 +56,17 @@ class PetDocument(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class PetAppointment(Base):
+    __tablename__ = "pet_appointments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pet_id: Mapped[int] = mapped_column(ForeignKey("pets.id"), nullable=False)
+    vet_name: Mapped[Optional[str]] = mapped_column(String(255))
+    clinic_name: Mapped[Optional[str]] = mapped_column(String(255))
+    date: Mapped[str] = mapped_column(String(30))
+    reason: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
